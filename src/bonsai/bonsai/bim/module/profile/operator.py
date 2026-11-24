@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with Bonsai.  If not, see <http://www.gnu.org/licenses/>.
 
+import math
+
 import bpy
 import ifcopenshell.api
 import ifcopenshell.api.profile
@@ -109,6 +111,34 @@ class RemoveProfileDef(bpy.types.Operator, tool.Ifc.Operator):
         props.active_profile_index = tool.Blender.get_valid_uilist_index(props.active_profile_index, props.profiles)
 
 
+def get_profile_rotation(profile: ifcopenshell.entity_instance) -> float:
+    """Rotation angle (radians) of a parameterized profile's Position."""
+    if not profile.is_a("IfcParameterizedProfileDef") or not profile.Position or not profile.Position.RefDirection:
+        return 0.0
+    x, y = profile.Position.RefDirection.DirectionRatios[:2]
+    return math.atan2(y, x)
+
+
+def set_profile_rotation(profile: ifcopenshell.entity_instance, angle: float) -> None:
+    """Set the rotation (radians) of a parameterized profile's Position, keeping its Location."""
+    ifc_file = tool.Ifc.get()
+    if abs(get_profile_rotation(profile) - angle) < 1e-6:
+        return
+    position = profile.Position
+    location = position.Location.Coordinates if position else (0.0, 0.0)
+    if abs(angle) < 1e-6 and not any(location) and ifc_file.schema != "IFC2X3":
+        new_position = None  # Position is optional since IFC4.
+    else:
+        # The UI angle is single precision: round so that right angles give exact directions.
+        ref_direction = (round(math.cos(angle), 6) + 0.0, round(math.sin(angle), 6) + 0.0)
+        new_position = ifc_file.createIfcAxis2Placement2D(
+            ifc_file.createIfcCartesianPoint(location), ifc_file.createIfcDirection(ref_direction)
+        )
+    profile.Position = new_position
+    if position and not ifc_file.get_total_inverses(position):
+        ifcopenshell.util.element.remove_deep2(ifc_file, position)
+
+
 class EnableEditingProfile(bpy.types.Operator):
     bl_idname = "bim.enable_editing_profile"
     bl_label = "Enable Editing Profile"
@@ -118,7 +148,9 @@ class EnableEditingProfile(bpy.types.Operator):
     def execute(self, context):
         props = tool.Profile.get_profile_props()
         props.profile_attributes.clear()
-        bonsai.bim.helper.import_attributes(tool.Ifc.get().by_id(self.profile), props.profile_attributes)
+        profile = tool.Ifc.get().by_id(self.profile)
+        bonsai.bim.helper.import_attributes(profile, props.profile_attributes)
+        props.profile_rotation = get_profile_rotation(profile)
         props.active_profile_id = self.profile
         return {"FINISHED"}
 
@@ -145,6 +177,8 @@ class EditProfile(bpy.types.Operator, tool.Ifc.Operator):
         attributes = bonsai.bim.helper.export_attributes(props.profile_attributes)
         profile = tool.Ifc.get().by_id(props.active_profile_id)
         ifcopenshell.api.profile.edit_profile(tool.Ifc.get(), profile=profile, attributes=attributes)
+        if profile.is_a("IfcParameterizedProfileDef"):
+            set_profile_rotation(profile, props.profile_rotation)
         model_profile.DumbProfileRegenerator().regenerate_from_profile_def(profile)
         bpy.ops.bim.load_profiles()
         generate_thumbnail_for_active_profile()

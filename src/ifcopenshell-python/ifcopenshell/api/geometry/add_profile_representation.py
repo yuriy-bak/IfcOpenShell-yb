@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+import math
 from typing import Any, Literal, Optional, Union, get_args
 
 import ifcopenshell.geom
@@ -79,6 +80,21 @@ def add_profile_representation(
     usecase.file = file
     clippings = clippings if clippings is not None else []
     return usecase.execute(context, profile, depth, cardinal_point, clippings, placement_zx_axes)
+
+
+# Profile classes whose size is read from their attributes, i.e. without their Position.
+SIZE_FROM_ATTRIBUTES_CLASSES = (
+    "IfcAsymmetricIShapeProfileDef",
+    "IfcCShapeProfileDef",
+    "IfcCircleProfileDef",
+    "IfcEllipseProfileDef",
+    "IfcIShapeProfileDef",
+    "IfcLShapeProfileDef",
+    "IfcRectangleProfileDef",
+    "IfcTShapeProfileDef",
+    "IfcUShapeProfileDef",
+    "IfcZShapeProfileDef",
+)
 
 
 class Usecase:
@@ -168,6 +184,28 @@ class Usecase:
         return self.file.createIfcCartesianPoint((0.0, 0.0, 0.0))
 
     def get_x(self) -> float:
+        return self.get_rotated_size()[0]
+
+    def get_y(self) -> float:
+        return self.get_rotated_size()[1]
+
+    def get_rotated_size(self) -> tuple[float, float]:
+        """Size of the profile's bounding box, taking the rotation of a parameterized profile's Position into account.
+
+        Sizes derived from the profile's shape already include its Position."""
+        x, y = self.get_profile_x(), self.get_profile_y()
+        if not any(self.profile.is_a(ifc_class) for ifc_class in SIZE_FROM_ATTRIBUTES_CLASSES):
+            return x, y
+        if not (position := self.profile.Position) or not position.RefDirection:
+            return x, y
+        dx, dy = position.RefDirection.DirectionRatios[:2]
+        length = math.hypot(dx, dy)
+        if not length:
+            return x, y
+        cos, sin = abs(dx / length), abs(dy / length)
+        return cos * x + sin * y, sin * x + cos * y
+
+    def get_profile_x(self) -> float:
         if self.profile.is_a("IfcAsymmetricIShapeProfileDef"):
             return self.profile.OverallWidth
         elif self.profile.is_a("IfcCShapeProfileDef"):
@@ -195,7 +233,7 @@ class Usecase:
             return self.convert_si_to_unit(ifcopenshell.util.shape.get_x(shape))
         return 0.0
 
-    def get_y(self) -> float:
+    def get_profile_y(self) -> float:
         if self.profile.is_a("IfcAsymmetricIShapeProfileDef"):
             return self.profile.OverallDepth
         elif self.profile.is_a("IfcCShapeProfileDef"):

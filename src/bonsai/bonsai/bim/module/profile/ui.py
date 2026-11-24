@@ -144,6 +144,9 @@ class BIM_PT_profiles(Panel):
 
     def draw_editable_ui(self, context):
         bonsai.bim.helper.draw_attributes(self.props.profile_attributes, self.layout, enable_search=True)
+        profile = tool.Ifc.get().by_id(self.props.active_profile_id)
+        if profile.is_a("IfcParameterizedProfileDef"):
+            self.layout.prop(self.props, "profile_rotation")
 
 
 class BIM_UL_profiles(UIList):

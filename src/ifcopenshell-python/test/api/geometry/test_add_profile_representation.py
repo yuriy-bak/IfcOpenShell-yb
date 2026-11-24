@@ -66,6 +66,20 @@ class TestAddProfileRepresentation(test.bootstrap.IFC4):
             assert item.Depth == 1000
             assert item.Position.Location.Coordinates == (-50.0, 50.0, 0.0)
 
+    def test_cardinal_point_of_a_rotated_parameterized_profile(self):
+        self.setup_profile()
+        position = self.file.createIfcAxis2Placement2D(
+            self.file.createIfcCartesianPoint((0.0, 0.0)), self.file.createIfcDirection((0.0, -1.0))
+        )
+        profile = self.file.createIfcUShapeProfileDef(
+            "AREA", None, position, Depth=100.0, FlangeWidth=50.0, WebThickness=2.0, FlangeThickness=2.0
+        )
+        representation = ifcopenshell.api.geometry.add_profile_representation(
+            self.file, context=self.body, profile=profile, depth=1000, cardinal_point="bottom left"
+        )
+        # Rotated by -90 degrees the profile is 100 wide and 50 deep.
+        assert representation.Items[0].Position.Location.Coordinates == (-50.0, 25.0, 0.0)
+
 
 class TestAddProfileRepresentationIFC2X3(test.bootstrap.IFC2X3, TestAddProfileRepresentation):
     pass

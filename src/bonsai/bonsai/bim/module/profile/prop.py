@@ -23,6 +23,7 @@ from bpy.props import (
     BoolProperty,
     CollectionProperty,
     EnumProperty,
+    FloatProperty,
     IntProperty,
     PointerProperty,
     StringProperty,
@@ -75,6 +76,15 @@ class BIMProfileProperties(PropertyGroup):
     )
     profile_attributes: CollectionProperty(name="Profile Attributes", type=Attribute)
     profile_classes: EnumProperty(items=get_profile_classes, name="Profile Classes")
+    profile_rotation: FloatProperty(
+        name="Rotation",
+        description=(
+            "Rotation of the profile in its own plane (Position of a parameterized profile).\n"
+            "E.g. -90 degrees lays a U-shaped cable tray flat with its opening up"
+        ),
+        default=0.0,
+        subtype="ANGLE",
+    )
     is_filtering_material_profiles: bpy.props.BoolProperty(
         name="Filter Material Profiles",
         default=False,
@@ -99,6 +109,7 @@ class BIMProfileProperties(PropertyGroup):
         active_arbitrary_profile_id: int
         profile_attributes: bpy.types.bpy_prop_collection_idprop[Attribute]
         profile_classes: str
+        profile_rotation: float
         is_filtering_material_profiles: bool
         object_to_profile: Union[bpy.types.Object, None]
 

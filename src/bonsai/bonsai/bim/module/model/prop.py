@@ -284,6 +284,14 @@ class BIMModelProperties(PropertyGroup):
     updating: bpy.props.BoolProperty(default=False)
     getter_enum = {"ifc_class": get_ifc_class, "relating_type": get_relating_type_id}
     extrusion_depth: bpy.props.FloatProperty(name="Extrusion Depth", min=0.001, default=42.0, subtype="DISTANCE")
+    profile_rotation: bpy.props.FloatProperty(
+        name="Profile Rotation",
+        description="Rotation of new profiled elements around their axis, e.g. to lay a U-shaped cable tray flat",
+        default=0.0,
+        soft_min=-pi,
+        soft_max=pi,
+        subtype="ANGLE",
+    )
     cardinal_point: bpy.props.EnumProperty(
         items=(
             # TODO: complain to buildingSMART
@@ -407,6 +415,7 @@ class BIMModelProperties(PropertyGroup):
         icon_id: int
         updating: bool
         extrusion_depth: float
+        profile_rotation: float
         cardinal_point: Literal[
             "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19"
         ]

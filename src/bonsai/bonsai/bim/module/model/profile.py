@@ -79,6 +79,7 @@ class DumbProfileGenerator:
         self.rotation = 0
         self.location = Vector((0, 0, 0))
         self.cardinal_point = int(props.cardinal_point)
+        self.profile_rotation = props.profile_rotation
         if self.insertion_type == "POLYLINE":
             return self.derive_from_polyline()
         elif self.insertion_type == "CURSOR":
@@ -125,6 +126,8 @@ class DumbProfileGenerator:
             else:
                 rotation_matrix = self.direction.to_track_quat("Z", "Y")
                 matrix_world = rotation_matrix.to_matrix().to_4x4() @ matrix_world
+
+        matrix_world = matrix_world @ Matrix.Rotation(self.profile_rotation, 4, "Z")
 
         matrix_world.translation = self.location
         if self.insertion_type != "POLYLINE" and self.container_obj:

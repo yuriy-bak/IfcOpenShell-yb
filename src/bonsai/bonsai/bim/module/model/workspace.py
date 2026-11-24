@@ -605,10 +605,16 @@ class CreateObjectUI:
 
         elif ifc_class in ("IfcColumnType", "IfcPileType"):
             row.prop(data=cls.props, property="cardinal_point", text="Axis")
+            row.prop(
+                data=cls.props, property="profile_rotation", text="Rotation" if ui_context != "TOOL_HEADER" else "R"
+            )
             row.prop(data=cls.props, property="extrusion_depth", text="Height" if ui_context != "TOOL_HEADER" else "H")
 
         elif ifc_class in ("IfcBeamType", "IfcMemberType"):
             row.prop(data=cls.props, property="cardinal_point", text="Axis")
+            row.prop(
+                data=cls.props, property="profile_rotation", text="Rotation" if ui_context != "TOOL_HEADER" else "R"
+            )
             row.prop(data=cls.props, property="extrusion_depth", text="Length" if ui_context != "TOOL_HEADER" else "L")
 
         elif ifc_class in ("IfcDoorType", "IfcDoorStyle"):
@@ -627,6 +633,11 @@ class CreateObjectUI:
             row.prop(
                 data=cls.props, property="rl2", text="Relative Level (rl2)" if ui_context != "TOOL_HEADER" else "RL"
             )
+            if ifc_class not in ("IfcWindowType", "IfcWindowStyle", "IfcDoorType", "IfcDoorStyle"):
+                row = cls.layout.row(align=True) if ui_context != "TOOL_HEADER" else row
+                row.prop(
+                    data=cls.props, property="profile_rotation", text="Rotation" if ui_context != "TOOL_HEADER" else "R"
+                )
 
         ### this neeeds to move
         elif ifc_class in ("IfcSpaceType"):
@@ -928,6 +939,9 @@ class EditObjectUI:
                 )
                 row.label(text="", icon="BLANK1") if ui_context != "TOOL_HEADER" else row
                 row.label(text="", icon="BLANK1") if ui_context != "TOOL_HEADER" else row
+
+                row = cls.layout.row(align=True) if ui_context != "TOOL_HEADER" else row
+                add_layout_hotkey_operator(row, "Rotate 90", "S_R", bpy.ops.bim.rotate_90.__doc__, ui_context)
 
             else:
                 add_layout_hotkey_operator(row, "Edit Axis", "A_E", "", ui_context)
@@ -1360,6 +1374,9 @@ class Hotkey(bpy.types.Operator, tool.Ifc.Operator):
             bpy.ops.bim.rotate_90(axis="Z")
         elif self.active_class in ("IfcBeam", "IfcBeamStandardCase", "IfcMember", "IfcMemberStandardCase"):
             bpy.ops.bim.rotate_90(axis="Y")
+        elif self.active_material_usage == "PROFILE":
+            # E.g. MEP segments: rotate the profile around the segment axis.
+            bpy.ops.bim.rotate_90(axis="Z")
 
     def hotkey_S_K(self):
         if not bpy.context.selected_objects:

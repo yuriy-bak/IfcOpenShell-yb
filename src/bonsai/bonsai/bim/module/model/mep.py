@@ -2774,13 +2774,17 @@ class GizmoMEPActions(bpy.types.GizmoGroup, gizmo.BaseIconActionGroup):
         z_anchor = z_top + self.ICON_ROW_Z_OFFSET
 
         # Restore last frame's IFC-derived state when the cache key is still
-        # valid (same active + same selection signature + same IFC generation).
+        # valid (same active + same selection + same transforms + same IFC generation).
         # Camera-dependent state (billboard_rot, matrix_basis) is still rebuilt
         # every frame below — only the expensive port/fitting/axis lookups are
         # cached.
         current_gen = tool.Parametric.get_geom_generation()
-        selection_sig = tuple(sorted(o.name for o in tool.Blender.get_selected_objects()))
-        cache_key = (obj.name, selection_sig, current_gen)
+        selected = sorted(tool.Blender.get_selected_objects(), key=lambda o: o.name)
+        selection_sig = tuple(o.name for o in selected)
+        # Port anchors are world positions: a plain Blender transform (G/R) changes them without
+        # bumping the IFC geometry generation, so the transforms are part of the key.
+        transform_sig = tuple(tuple(row) for o in [obj, *selected] for row in o.matrix_world)
+        cache_key = (obj.name, selection_sig, transform_sig, current_gen)
         if getattr(self, "_mep_state_cache_key", None) == cache_key:
             cache = self._mep_state_cache
             port_state_at = cache["port_state_at"]
